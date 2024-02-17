@@ -6,7 +6,7 @@ const { BOOK_CATEGORIES } = require("../configs/constant");
 const bookSchema = new Schema({
    title: { type: String, required: [true, "Required book title!"] },
    subTitle: { type: String },
-   isbn: { type: Number, unique: false },
+   isbn: { type: String, unique: false },
    authors: { type: String },
    thumbnail: { type: String },
    description: { type: String },

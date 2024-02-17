@@ -36,6 +36,25 @@ function bookInputDataValidation(body) {
    };
 }
 
+function removeQuotes(str) {
+   // if (typeof str === 'string' && str.length >= 1 && (
+   //    (str.charAt(0) === '"' && str.charAt(str.length - 1) === '"') ||
+   //    (str.charAt(0) === "'" && str.charAt(str.length - 1) === "'")
+   // )) {
+   //    return str.slice(1, -1);
+   // }
+   // return str;
+
+   if (typeof str === 'string' && str.length >= 1) {
+      const quotesPattern = /^['"]|['"]$/g;
+
+      // Replace the first and last occurrence of quotes with an empty string
+      return str.replace(quotesPattern, '');
+   }
+
+   return str;
+}
+
 
 /**
  * [Added BOOKS_TBL By CSV Bulk]
@@ -78,6 +97,14 @@ async function addBookByCSV(req, res, next) {
             const newObj = {};
             for (const oldKey in item) {
                const newKey = mapping[oldKey] || oldKey;
+
+
+               if (newKey === "title") {
+
+                  newObj[newKey] = removeQuotes(item[oldKey] || "");
+
+               }
+
                newObj[newKey] = item[oldKey];
                newObj["userId"] = _id;
                newObj["ratings"] = {
@@ -787,6 +814,11 @@ async function reportBooksComment(req, res, next) {
 async function myBookSelfBooks(req, res, next) {
    try {
       const { _id } = req?.decoded;
+      const limit = req?.query?.limit || 10;
+      const page = req?.query?.page || 1;
+
+      const skip = Math.ceil((parseInt(page) - 1) * parseInt(limit));
+
 
       let bookTbl = {
          $lookup: {
@@ -855,7 +887,16 @@ async function myBookSelfBooks(req, res, next) {
       ]);
 
 
-      const myBooks = await BOOKS_TBL.find({ userId: new ObjectId(_id) }, { description: 0 });
+      const myBooks = await BOOKS_TBL.aggregate([
+         { $match: { userId: new ObjectId(_id) } },
+         {
+            $facet: {
+               totalBooksCount: [{ $count: 'number' }],
+               allBooks: [{ $project: { description: 0 } }, { $limit: parseInt(limit) }]
+            }
+         },
+
+      ]);
 
       return new Success(res, {
          data: {
