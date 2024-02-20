@@ -486,7 +486,6 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
 
       const decoded = req?.decoded;
 
-
       let forUserBooks = {};
       if (decoded?._id) {
          forUserBooks = {
@@ -592,7 +591,6 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
             $facet: mainFacet
          }
       ]);
-
 
       return new Success(res, {
          data: {

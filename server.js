@@ -9,7 +9,7 @@ const dbConnection = require("./configs/DbConnection");
 // Declared Necessary constant
 const PORT = process.env.PORT || 5000;
 const environments = process.env.NODE_ENV || "development";
-const ALLOWED_ORIGINS = ["http://localhost:3000"];
+const ALLOWED_ORIGINS = ["http://localhost:3000", "https://book-worm-client.vercel.app"];
 const BASE_CONFIG = {
    development: {
       appUri: process.env.BACKEND_URL_LOCAL || "",
@@ -35,7 +35,6 @@ app.use((req, res, next) => {
 // Cors policy
 app.use(
    cors({
-      // origin: "*",
       origin: function (origin, callback) {
          if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || !origin) {
             return callback(null, true);
@@ -60,6 +59,7 @@ app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "public")));
 
 // Routes Declaration Here
+app.use("/api/v1/overview", require("./routes/home_route"));
 // Auth Route
 app.use("/api/v1/auth", require("./routes/auth_route"));
 

@@ -14,7 +14,7 @@ async function createArticle(req, res, next) {
    try {
       const { _id } = req?.decoded;
 
-      const { title, content } = req?.body;
+      const { title, content, metaDescription, keywords } = req?.body;
       const thumbnailFile = req?.file;
 
       if (!content || !title) throw new Error400("Required content and title!");
@@ -22,6 +22,8 @@ async function createArticle(req, res, next) {
       await new ARTICLES_TBL({
          title: validator.escape(title),
          content,
+         metaDescription,
+         keywords: keywords.split(" "),
          authorId: _id,
          thumbnail: thumbnailFile ? "/images/" + thumbnailFile?.filename : null,
          articleCreatedAt: new Date(Date.now())
@@ -176,7 +178,7 @@ async function modifyArticle(req, res, next) {
 
       const { _id } = req?.decoded;
 
-      const { content, title } = req?.body;
+      const { content, title, keywords, metaDescription } = req?.body;
 
       const thumbnailFile = req?.file;
 
@@ -189,7 +191,10 @@ async function modifyArticle(req, res, next) {
       Object.assign(article, {
          content,
          title,
-         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : article?.thumbnail
+         keywords: keywords.split(" "),
+         metaDescription,
+         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : article?.thumbnail,
+         articleModifiedAt: new Date(Date.now())
       });
 
       await article.save();
@@ -280,7 +285,7 @@ async function homeArticle(req, res, next) {
          },
          {
             $unset: ["authorAcc"]
-         },{
+         }, {
             $limit: 3
          }
       ]);// find({}).limit(3);

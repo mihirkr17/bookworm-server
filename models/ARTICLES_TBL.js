@@ -5,7 +5,10 @@ const articlesSchema = new Schema({
    authorId: { type: Schema.Types.ObjectId, ref: "USERS_TBL" },
    thumbnail: { type: String },
    content: { type: String },
-   articleCreatedAt: { type: Date }
+   metaDescription: { type: String },
+   keywords: { type: Array },
+   articleCreatedAt: { type: Date },
+   articleModifiedAt: { type: Date }
 });
 
 
