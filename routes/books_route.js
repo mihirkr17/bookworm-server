@@ -214,6 +214,8 @@ router.get("/show-all-comments", verifyAuth, isEditor, showAllBooksCommentsInDas
 router.get("/my-books", verifyAuth, getAllBooksBySearchOrNotSearchSystem);
 
 
+router.get("/manage", verifyAuth, getAllBooksBySearchOrNotSearchSystem);
+
 
 router.get("/mybookself", verifyAuth, myBookSelfBooks);
 

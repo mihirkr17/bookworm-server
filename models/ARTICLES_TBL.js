@@ -7,6 +7,7 @@ const articlesSchema = new Schema({
    content: { type: String },
    metaDescription: { type: String },
    keywords: { type: Array },
+   views: Number,
    articleCreatedAt: { type: Date },
    articleModifiedAt: { type: Date }
 });

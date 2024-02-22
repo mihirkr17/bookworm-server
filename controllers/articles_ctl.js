@@ -88,9 +88,14 @@ async function showAllArticles(req, res, next) {
    // search query
    if (q) {
       // Sanitize the search query
-      let newQ = validator.escape(q).trim();
-      searchQuery = { title: { $regex: newQ, $options: 'si' } }
-   }
+      let newQ = validator.escape(q.replaceAll("+", " ")).trim();
+      searchQuery = {
+         $or: [{ title: { $regex: newQ, $options: 'si' } }, {
+            keywords: { $in: newQ.split(" ") }
+         }]
+      }
+   };
+
 
 
    let sortQuery = {};
@@ -108,7 +113,7 @@ async function showAllArticles(req, res, next) {
          title: -1
       }
    } else {
-      sortQuery = { _id: -1 };
+      sortQuery = { views: -1 };
    }
 
    const skip = Math.ceil((parseInt(page) - 1) * parseInt(limits));
@@ -147,7 +152,8 @@ async function showAllArticles(req, res, next) {
          {
             $facet: {
                totalArticlesCount: [...searchStructure, { $count: 'number' }],
-               searchedArticles: [...searchStructure, { $skip: skip }, { $limit: parseInt(limits) }]
+               searchedArticles: [...searchStructure, { $skip: skip }, { $limit: parseInt(limits) }],
+               recentArticles: [{ $project: { title: 1, thumbnail: 1, articleCreatedAt: 1 } }, { $sort: { _id: -1 } }, { $limit: 6 }]
             }
          }
       ]);
@@ -248,9 +254,13 @@ async function getArticleById(req, res, next) {
          }
       ]);
 
+      const singleArticle = Array.isArray(article) ? article[0] : {}
+
+      await ARTICLES_TBL.updateOne({ _id: new ObjectId(articleId) }, { $set: { views: singleArticle?.views + 1 || 0 } }, { upsert: true })
+
       return new Success(res, {
          data: {
-            article: Array.isArray(article) ? article[0] : {}
+            article: singleArticle
          }
       })
 

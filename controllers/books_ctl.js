@@ -487,7 +487,7 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
       const decoded = req?.decoded;
 
       let forUserBooks = {};
-      if (decoded?._id) {
+      if (decoded?._id && decoded?.role === "User") {
          forUserBooks = {
             userId: new ObjectId(decoded?._id)
          }
@@ -812,10 +812,6 @@ async function reportBooksComment(req, res, next) {
 async function myBookSelfBooks(req, res, next) {
    try {
       const { _id } = req?.decoded;
-      const limit = req?.query?.limit || 10;
-      const page = req?.query?.page || 1;
-
-      const skip = Math.ceil((parseInt(page) - 1) * parseInt(limit));
 
 
       let bookTbl = {
@@ -885,23 +881,11 @@ async function myBookSelfBooks(req, res, next) {
       ]);
 
 
-      const myBooks = await BOOKS_TBL.aggregate([
-         { $match: { userId: new ObjectId(_id) } },
-         {
-            $facet: {
-               totalBooksCount: [{ $count: 'number' }],
-               allBooks: [{ $project: { description: 0 } }, { $limit: parseInt(limit) }]
-            }
-         },
-
-      ]);
-
       return new Success(res, {
          data: {
             ratedBooks: ratedBooks || [],
             unreadBooks: unreadBooks || [],
-            readBooks: readBooks || [],
-            myBooks: myBooks || []
+            readBooks: readBooks || []
          }
       })
 
