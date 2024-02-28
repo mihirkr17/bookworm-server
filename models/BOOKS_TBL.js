@@ -15,7 +15,7 @@ const bookSchema = new Schema({
       type: String
    },
    numberPages: { type: Number },
-   userId: { type: Schema.Types.ObjectId, ref: "USERS_TBL" },
+   creatorId: { type: Schema.Types.ObjectId, ref: "USERS_TBL" },
    ratings: {
       "1": Number,
       "2": Number,
@@ -30,7 +30,8 @@ const bookSchema = new Schema({
    },
    averageRatings: Number,
    totalRatingsCount: Number,
-   bookCreatedAt: { type: Date, default: Date.now() }
+   bookCreatedAt: { type: Date, default: Date.now() },
+   bookModifiedAt: { type: Date }
 });
 
 

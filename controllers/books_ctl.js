@@ -3,7 +3,7 @@ const BOOKS_TBL = require("../models/BOOKS_TBL");
 const BOOKS_READ_TBL = require("../models/BOOKS_READ_TBL");
 const BOOKS_RATING_TBL = require("../models/BOOKS_RATING_TBL");
 const BOOKS_COMMENT_TBL = require("../models/BOOKS_COMMENT_TBL");
-const { Success, Error400, Error404 } = require("../responser/response");
+const { Success, Error400, Error404, Error503 } = require("../responser/response");
 const { ObjectId } = require("mongodb");
 const { BOOKS_READ_STATUS, ROLES, BOOK_CATEGORIES } = require("../configs/constant");
 const validator = require('validator');
@@ -89,8 +89,7 @@ async function addBookByCSV(req, res, next) {
             thumbnail: 'thumbnail',
             description: 'description',
             published_year: 'publishedYear',
-            num_pages: 'numberPages',
-
+            num_pages: 'numberPages'
          }
 
          let newArr = formedArr.map((item) => {
@@ -106,7 +105,7 @@ async function addBookByCSV(req, res, next) {
                }
 
                newObj[newKey] = item[oldKey];
-               newObj["userId"] = _id;
+               newObj["creatorId"] = _id;
                newObj["ratings"] = {
                   "1": 0,
                   "2": 0,
@@ -118,7 +117,8 @@ async function addBookByCSV(req, res, next) {
                   "8": 0,
                   "9": 0,
                   "10": 0
-               }
+               },
+                  newObj["bookCreatedAt"] = new Date(Date.now())
             }
             return newObj;
          });
@@ -151,10 +151,15 @@ async function addBookByCSV(req, res, next) {
 async function createBook(req, res, next) {
    try {
       const thumbnailFile = req?.file;
+      const creator = req?.decoded?._id;
+
+      if (!creator || !ObjectId.isValid(creator)) throw new Error503("Service unavailable !");
 
       const data = bookInputDataValidation(req?.body);
 
       Object.assign(data, {
+         creatorId: creator,
+         bookCreatedAt: new Date(Date.now()),
          thumbnail: "/images/" + thumbnailFile?.filename, ratings: {
             "1": 0,
             "2": 0,
@@ -203,7 +208,7 @@ async function modifyBook(req, res, next) {
 
       const bookData = bookInputDataValidation(req?.body);
 
-      let filterFor = role === ROLES?.user ? { $and: [{ _id: new ObjectId(bookId) }, { userId: new ObjectId(_id) }] } : { _id: new ObjectId(bookId) };
+      let filterFor = role === ROLES?.user ? { $and: [{ _id: new ObjectId(bookId) }, { creatorId: new ObjectId(_id) }] } : { _id: new ObjectId(bookId) };
 
       const book = await BOOKS_TBL.findOne(filterFor);
 
@@ -212,7 +217,8 @@ async function modifyBook(req, res, next) {
       // assign new values
       Object.assign(book, {
          ...bookData,
-         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : book?.thumbnail
+         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : book?.thumbnail,
+         bookModifiedAt: new Date(Date.now())
       });
 
       await book.save();
@@ -275,7 +281,7 @@ async function addBookToTheReadCategory(req, res, next) {
    try {
       const { bookId } = req?.params;
       const { _id } = req?.decoded;
-      const { status } = req?.query;
+      const { status } = req?.body;
       let message = "";
 
       if (!Object.values(BOOKS_READ_STATUS).includes(status)) throw new Error400('Invalid book status value!');
@@ -291,9 +297,9 @@ async function addBookToTheReadCategory(req, res, next) {
       const bookReads = await BOOKS_READ_TBL.findOne(filterFor);
 
       if (bookReads) {
-         await BOOKS_READ_TBL.updateOne(filterFor, { $set: { readStatus: status } }, { upsert: true });
+         bookReads.readStatus = status;
+         await bookReads.save();
          message = `Book read status changed to ${status}`;
-
       } else {
          await new BOOKS_READ_TBL({
             bookId,
@@ -489,7 +495,7 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
       let forUserBooks = {};
       if (decoded?._id && decoded?.role === "User") {
          forUserBooks = {
-            userId: new ObjectId(decoded?._id)
+            creatorId: new ObjectId(decoded?._id)
          }
       }
       // search query
@@ -620,39 +626,45 @@ async function getSingleBookDataById(req, res, next) {
       if (!ObjectId.isValid(bookId))
          throw new Error400("Invalid book id!");
 
+      const userId = req?.decoded?._id;
 
-      const book = await BOOKS_TBL.aggregate([
-         { $match: { _id: new ObjectId(bookId) } },
-         {
-            $lookup: {
-               from: "BOOKS_COMMENT_TBL",
-               let: { mainBookId: "$_id" },
-               pipeline: [
-                  { $match: { $expr: { $eq: ["$bookId", "$$mainBookId"] } } },
-                  {
-                     $project: { bookId: 0, reports: 0, __v: 0 }
-                  }
-               ],
-               as: "comments"
-            }
-         },
-         {
+      let filters = [{ $match: { _id: new ObjectId(bookId) } }, {
+         $lookup: {
+            from: "BOOKS_COMMENT_TBL",
+            let: { mainBookId: "$_id" },
+            pipeline: [
+               { $match: { $expr: { $eq: ["$bookId", "$$mainBookId"] } } },
+               {
+                  $project: { bookId: 0, reports: 0, __v: 0 }
+               }
+            ],
+            as: "comments"
+         }
+      }, {
+         $unset: ["ratings"]
+      }];
+
+      if (userId && ObjectId.isValid(userId)) {
+         filters.push({
             $lookup: {
                from: "BOOKS_RATING_TBL",
                let: { mainBookId: "$_id" },
                pipeline: [
                   { $match: { $expr: { $eq: ["$bookId", "$$mainBookId"] } } },
                   {
-                     $project: { userId: 1, rating: 1, _id: 0 }
+                     $project: { ratingUserId: "$userId", ratingUserValue: "$rating", _id: 0 }
+                  }, {
+                     $match: {
+                        ratingUserId: new ObjectId(userId)
+                     }
                   }
                ],
-               as: "ratingsUsers"
+               as: "ratingsUser"
             }
-         },
-         {
-            $unset: ["ratings"]
-         }
-      ]);
+         }, { $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: ["$ratingsUser", 0] }, "$$ROOT"] } } }, { $unset: "ratingsUser" })
+      }
+
+      const book = await BOOKS_TBL.aggregate(filters);
 
       return new Success(res, {
          data: {
@@ -826,7 +838,7 @@ async function myBookSelfBooks(req, res, next) {
                   }
                },
                {
-                  $project: { description: 0, userId: 0, reports: 0, __v: 0, bookId: 0, ratings: 0 }
+                  $project: { description: 0, creatorId: 0, reports: 0, __v: 0, bookId: 0, ratings: 0 }
                }
             ],
             as: "books"
@@ -955,7 +967,30 @@ async function deleteOwnComments(req, res, next) {
    }
 }
 
+
+async function updateFieldsMethod(req, res) {
+
+
+   try {
+      const result = await BOOKS_TBL.updateMany({}, {
+         $rename: {
+            "userId": "creatorId"
+         }
+      });
+
+      console.log(result);
+
+
+      return new Success(res, {
+         message: "Success"
+      })
+   } catch (error) {
+
+   }
+}
+
 module.exports = {
+   updateFieldsMethod,
    addBookByCSV,
    createBook,
    modifyBook,

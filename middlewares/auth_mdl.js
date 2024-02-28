@@ -44,5 +44,24 @@ async function isEditor(req, res, next) {
    }
 }
 
+async function getAuth(req, res, next) {
 
-module.exports = { verifyAuth, isEditor }
+   const token = req.headers?.authorization?.split(" ")[1] || undefined;
+
+   if (!token) {
+      return next();
+   }
+
+   jwt.verify(token, AUTH_SECRET, (err, decoded) => {
+      if (err) {
+         req.decoded = undefined;
+      } else {
+         req.decoded = decoded;
+      }
+
+      return next();
+   });
+}
+
+
+module.exports = { verifyAuth, isEditor, getAuth }

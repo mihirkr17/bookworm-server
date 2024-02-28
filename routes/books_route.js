@@ -19,8 +19,9 @@ const {
    myBookSelfBooks,
    getAllBooksCategories,
    deleteOwnComments,
-   deleteReadCategoryBookById } = require("../controllers/books_ctl");
-const { verifyAuth, isEditor } = require("../middlewares/auth_mdl");
+   deleteReadCategoryBookById, 
+   updateFieldsMethod} = require("../controllers/books_ctl");
+const { verifyAuth, isEditor, getAuth } = require("../middlewares/auth_mdl");
 const { uploadBookAsCsv, thumbnailUploader } = require("../middlewares/multer_mdl");
 
 
@@ -35,7 +36,7 @@ const { uploadBookAsCsv, thumbnailUploader } = require("../middlewares/multer_md
  *
  * @return  {[type]}                   [return response message]
  */
-router.post("/add-book-by-csv", verifyAuth, isEditor, uploadBookAsCsv().single("book"), addBookByCSV);
+router.post("/add-book-by-csv", verifyAuth, uploadBookAsCsv().single("book"), addBookByCSV);
 
 
 
@@ -77,7 +78,7 @@ router.put("/modify/:bookId", verifyAuth, thumbnailUploader().single("thumbnail"
  *
  * @return  {[type]}                          [return response message]
  */
-router.delete("/delete/:bookId", verifyAuth, isEditor, deleteSingleBookById);
+router.delete("/delete/:bookId", verifyAuth, deleteSingleBookById);
 
 
 /**
@@ -89,7 +90,7 @@ router.delete("/delete/:bookId", verifyAuth, isEditor, deleteSingleBookById);
  * @query    {status} /action/:bookId?status=to-read | read
  * @return  {[type]}                         [return response message]
  */
-router.put("/action/:bookId", verifyAuth, addBookToTheReadCategory);
+router.put("/read-to-read/:bookId", verifyAuth, addBookToTheReadCategory);
 
 
 /**
@@ -172,7 +173,7 @@ router.get("/", getAllBooksBySearchOrNotSearchSystem);
  *
  * @return  {[type]}                         [return book data as a object]
  */
-router.get("/single/:bookId", getSingleBookDataById);
+router.get("/single/:bookId", getAuth, getSingleBookDataById);
 
 
 /**
@@ -223,6 +224,9 @@ router.get("/mybookself", verifyAuth, myBookSelfBooks);
 router.get("/categories-all", getAllBooksCategories);
 
 
-router.delete("/delete-own-comment/:commentId/:bookId", verifyAuth, deleteOwnComments)
+router.delete("/delete-own-comment/:commentId/:bookId", verifyAuth, deleteOwnComments);
+
+
+router.post("/update-fields", updateFieldsMethod);
 
 module.exports = router;
