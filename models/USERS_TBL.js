@@ -15,6 +15,7 @@ const userSchema = new Schema({
    password: { type: String, required: [true, "Required password!"] },
    login: { type: String },
    role: { type: String, enum: ["User", "Editor"] },
+   avatar: { type: String },
    createdAt: { type: Date, default: Date.now() }
 })
 

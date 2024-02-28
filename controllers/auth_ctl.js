@@ -11,7 +11,9 @@ const { smtpSender } = require("../services/email_srv")
 
 async function registerCallback(data, role) {
    try {
-      const { email, password } = data;
+      const { email, password, avatarFileName } = data;
+
+      let avatar = avatarFileName && "/avatar/" + avatarFileName;
 
       const firstName = data?.firstName && data?.firstName.trim();
       const lastName = data?.lastName && data?.lastName.trim();
@@ -37,6 +39,7 @@ async function registerCallback(data, role) {
          lastName: validator.escape(lastName).trim(),
          email,
          password,
+         avatar,
          role
       }).save();
    } catch (error) {
@@ -120,7 +123,16 @@ async function userSignUpSystem(req, res, next) {
  */
 async function editorSignUpSystem(req, res, next) {
    try {
-      await registerCallback(req?.body, ROLES.editor);
+
+      const avatarFile = req?.file;
+
+      if (!avatarFile?.filename) throw new Error400("Please select avatar!");
+
+      let body = req?.body;
+
+      body["avatarFileName"] = avatarFile?.filename;
+
+      await registerCallback(body, ROLES.editor);
 
       return new Success(res, {
          message: "Thank you for registration"
