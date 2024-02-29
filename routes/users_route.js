@@ -1,6 +1,7 @@
 const express = require("express");
 const { verifyAuth, isEditor } = require("../middlewares/auth_mdl");
-const { showAllUsersInEditorDashboard, deleteUserById, viewUserProfile, checkUserExistOrNotByEmail } = require("../controllers/users_ctl");
+const { showAllUsersInEditorDashboard, updateAvatar, deleteUserById, persistUser, checkUserExistOrNotByEmail, myProfile, changeUserNames } = require("../controllers/users_ctl");
+const { editorAvatarUploader } = require("../middlewares/multer_mdl");
 const router = express.Router();
 
 
@@ -35,11 +36,11 @@ router.delete("/delete-user/:userId", verifyAuth, isEditor, deleteUserById);
  *
  * @param   {[type]}  /profile         [/profile description]
  * @param   {[type]}  verifyAuth       [verifyAuth description]
- * @param   {[type]}  viewUserProfile  [viewUserProfile description]
+ * @param   {[type]}  persistUser  [persistUser description]
  *
  * @return  {[type]}                   [return profile data]
  */
-router.get("/profile", verifyAuth, viewUserProfile);
+router.get("/persistence", verifyAuth, persistUser);
 
 
 /**
@@ -51,5 +52,14 @@ router.get("/profile", verifyAuth, viewUserProfile);
  * @return  {[type]}                                    [return description]
  */
 router.post("/credential/check-account", checkUserExistOrNotByEmail);
+
+
+
+router.get("/my-profile", verifyAuth, myProfile);
+
+
+router.put("/change-names", verifyAuth, changeUserNames);
+
+router.put("/update-avatar", verifyAuth, editorAvatarUploader().single("avatar"), updateAvatar)
 
 module.exports = router;

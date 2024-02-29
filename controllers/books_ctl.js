@@ -635,13 +635,49 @@ async function getSingleBookDataById(req, res, next) {
             pipeline: [
                { $match: { $expr: { $eq: ["$bookId", "$$mainBookId"] } } },
                {
-                  $project: { bookId: 0, reports: 0, __v: 0 }
-               }
+                  $facet: {
+                     totalCommentsCount: [{ $count: 'number' }],
+                     commentsAll: [{
+                        $lookup: {
+                           from: "USERS_TBL",
+                           let: { uId: "$userId" },
+                           pipeline: [
+                              { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+                              {
+                                 $project: {
+                                    commentAuthorName: { $concat: ["$firstName", " ", "$lastName"] }
+                                 }
+                              }
+                           ],
+                           as: "commentUser"
+                        }
+                     },
+                     {
+                        $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: ["$commentUser", 0] }, "$$ROOT"] } }
+                     },
+                     {
+                        $project: { bookId: 0, reports: 0, __v: 0 }
+                     },
+                     {
+                        $unset: ["commentUser"]
+                     },
+                     {
+                        $sort: { _id: -1 }
+                     },
+                     {
+                        $limit: 10
+                     }]
+                  }
+               },
+
             ],
             as: "comments"
          }
       }, {
-         $unset: ["ratings"]
+         $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: ["$comments", 0] }, "$$ROOT"] } }
+      },
+      {
+         $unset: ["ratings", "comments"]
       }];
 
       if (userId && ObjectId.isValid(userId)) {
@@ -688,7 +724,7 @@ async function getSingleBookDataById(req, res, next) {
  */
 async function addCommentsForBook(req, res, next) {
    try {
-      const { _id, nickName = "unknown" } = req?.decoded;
+      const { _id, fullName = "unknown" } = req?.decoded;
       const { bookId } = req?.params;
 
 
@@ -703,7 +739,7 @@ async function addCommentsForBook(req, res, next) {
       // Inserting comment Data
       await new BOOKS_COMMENT_TBL({
          content: validator.escape(content),
-         author: nickName,
+         author: fullName,
          bookId, userId: _id,
          commentCreatedAt: new Date(Date.now())
       }).save();
@@ -968,29 +1004,53 @@ async function deleteOwnComments(req, res, next) {
 }
 
 
-async function updateFieldsMethod(req, res) {
-
-
+async function showAllComments(req, res, next) {
    try {
-      const result = await BOOKS_TBL.updateMany({}, {
-         $rename: {
-            "userId": "creatorId"
+      const bookId = req?.params?.bookId;
+
+      if (!bookId || !ObjectId.isValid(bookId)) throw new Error400("Invalid book id!");
+
+      const comments = await BOOKS_COMMENT_TBL.aggregate([
+         { $match: { bookId: new ObjectId(bookId) } },
+         {
+            $lookup: {
+               from: "USERS_TBL",
+               let: { uId: "$userId" },
+               pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+                  {
+                     $project: {
+                        commentAuthorName: { $concat: ["$firstName", " ", "$lastName"] }
+                     }
+                  }
+               ],
+               as: "commentUser"
+            }
+         },
+         {
+            $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: ["$commentUser", 0] }, "$$ROOT"] } }
+         },
+         {
+            $project: { bookId: 0, reports: 0, __v: 0 }
+         },
+         {
+            $unset: ["commentUser"]
+         },
+         {
+            $sort: { _id: -1 }
          }
-      });
-
-      console.log(result);
-
+      ]);
 
       return new Success(res, {
-         message: "Success"
+         data: {
+            comments: comments || []
+         }
       })
    } catch (error) {
-
+      next(error);
    }
 }
-
 module.exports = {
-   updateFieldsMethod,
    addBookByCSV,
    createBook,
    modifyBook,
@@ -1007,5 +1067,6 @@ module.exports = {
    showAllBooksCommentsInDashboard,
    deleteBooksCommentByIdInDashboard,
    getAllBooksCategories,
-   deleteOwnComments
+   deleteOwnComments,
+   showAllComments
 }

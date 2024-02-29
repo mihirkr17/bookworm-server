@@ -78,7 +78,7 @@ async function loginSystem(req, res, next) {
          email: user?.email,
          _id: user?._id,
          role: user?.role,
-         nickName: user?.firstName + " " + user?.lastName
+         fullName: user?.firstName + " " + user?.lastName
       });
 
       return new Success(res, {

@@ -5,6 +5,7 @@ const { Success, Error400, Error503, Error404 } = require("../responser/response
 const validator = require("validator");
 const { ERROR_MESSAGE } = require("../configs/error_message");
 const { smtpSender } = require("../services/email_srv");
+const { validStringRegex } = require("../utils/input_validator");
 
 /**
  * [All USERS_TBL in Editor Dashboard]
@@ -70,17 +71,11 @@ async function deleteUserById(req, res, next) {
  * @param {*} next 
  * @returns 
  */
-async function viewUserProfile(req, res, next) {
+async function persistUser(req, res, next) {
    try {
-      const { _id } = req?.decoded;
-
-      const user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
-
-      if (!user) throw new Error("Invalid Credentials!");
-
       return new Success(res, {
          data: {
-            profile: user || {}
+            profile: req?.decoded || {}
          }
       })
    } catch (error) {
@@ -123,12 +118,83 @@ async function checkUserExistOrNotByEmail(req, res, next) {
 
 
 
+async function myProfile(req, res, next) {
+   try {
+      const { _id } = req?.decoded;
 
+      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+
+      if (!user) throw new Error("Invalid Credentials!");
+
+      return new Success(res, {
+         data: {
+            myProfile: user || {}
+         }
+      })
+   } catch (error) {
+      next(error);
+   }
+}
+
+async function changeUserNames(req, res, next) {
+   try {
+      const { _id } = req?.decoded;
+      const { firstName, lastName } = req?.body;
+
+      if (!firstName || firstName.trim().length < 3 || firstName.trim().length > 18 || !validStringRegex(firstName))
+         throw new Error400(ERROR_MESSAGE.firstNameErr);
+
+      if (!lastName || lastName.trim().length < 3 || lastName.trim().length > 10 || !validStringRegex(lastName))
+         throw new Error400(ERROR_MESSAGE.lastNameErr);
+
+      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+
+      if (!user) throw new Error("Invalid Credentials!");
+
+      user.firstName = firstName.trim();
+
+      user.lastName = lastName.trim();
+
+      await user.save();
+
+      return new Success(res, {
+         message: "Name updated successfully."
+      })
+   } catch (error) {
+      next(error);
+   }
+}
+
+async function updateAvatar(req, res, next) {
+   try {
+      const { _id } = req?.decoded;
+      const avatarFile = req?.file;
+
+      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+
+      if (!user) throw new Error("Invalid Credentials!");
+
+      let newAvatar = avatarFile ? "/avatar/" + avatarFile.filename : user?.avatar;
+
+      user.avatar = newAvatar;
+
+      await user.save();
+
+      return new Success(res, {
+         message: "Avatar updated successfully."
+      })
+   } catch (error) {
+      next(error);
+   }
+}
 
 
 module.exports = {
    showAllUsersInEditorDashboard,
    deleteUserById,
-   viewUserProfile,
-   checkUserExistOrNotByEmail
+   persistUser,
+   myProfile,
+   checkUserExistOrNotByEmail,
+   changeUserNames,
+   updateAvatar
 }

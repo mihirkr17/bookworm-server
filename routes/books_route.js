@@ -20,7 +20,7 @@ const {
    getAllBooksCategories,
    deleteOwnComments,
    deleteReadCategoryBookById, 
-   updateFieldsMethod} = require("../controllers/books_ctl");
+   showAllComments} = require("../controllers/books_ctl");
 const { verifyAuth, isEditor, getAuth } = require("../middlewares/auth_mdl");
 const { uploadBookAsCsv, thumbnailUploader } = require("../middlewares/multer_mdl");
 
@@ -218,7 +218,7 @@ router.get("/my-books", verifyAuth, getAllBooksBySearchOrNotSearchSystem);
 router.get("/manage", verifyAuth, getAllBooksBySearchOrNotSearchSystem);
 
 
-router.get("/mybookself", verifyAuth, myBookSelfBooks);
+router.get("/mybookshelf", verifyAuth, myBookSelfBooks);
 
 
 router.get("/categories-all", getAllBooksCategories);
@@ -227,6 +227,7 @@ router.get("/categories-all", getAllBooksCategories);
 router.delete("/delete-own-comment/:commentId/:bookId", verifyAuth, deleteOwnComments);
 
 
-router.post("/update-fields", updateFieldsMethod);
+
+router.get("/show-all-comments/:bookId", showAllComments);
 
 module.exports = router;
