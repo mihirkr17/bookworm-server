@@ -4,11 +4,11 @@ const BOOKS_READ_TBL = require("../models/BOOKS_READ_TBL");
 const BOOKS_RATING_TBL = require("../models/BOOKS_RATING_TBL");
 const BOOKS_COMMENT_TBL = require("../models/BOOKS_COMMENT_TBL");
 const { Success, Error400, Error404, Error503 } = require("../responser/response");
-const { ObjectId } = require("mongodb");
-const { BOOKS_READ_STATUS, ROLES, BOOK_CATEGORIES } = require("../configs/constant");
+const { BOOKS_READ_STATUS, ROLES, BOOK_CATEGORIES, RATING_POINTS } = require("../configs/constant");
 const validator = require('validator');
 const { calculateAverageRatings } = require("../utils/calc");
 const fsPromises = require("fs/promises");
+const { compareObjectId, isValidObjectId } = require("../utils/mongodb_function");
 
 
 // utils 
@@ -97,27 +97,13 @@ async function addBookByCSV(req, res, next) {
             for (const oldKey in item) {
                const newKey = mapping[oldKey] || oldKey;
 
-
                if (newKey === "title") {
-
                   newObj[newKey] = removeQuotes(item[oldKey] || "");
-
                }
 
                newObj[newKey] = item[oldKey];
                newObj["creatorId"] = _id;
-               newObj["ratings"] = {
-                  "1": 0,
-                  "2": 0,
-                  "3": 0,
-                  "4": 0,
-                  "5": 0,
-                  "6": 0,
-                  "7": 0,
-                  "8": 0,
-                  "9": 0,
-                  "10": 0
-               },
+               newObj["ratings"] = RATING_POINTS,
                   newObj["bookCreatedAt"] = new Date(Date.now())
             }
             return newObj;
@@ -153,25 +139,14 @@ async function createBook(req, res, next) {
       const thumbnailFile = req?.file;
       const creator = req?.decoded?._id;
 
-      if (!creator || !ObjectId.isValid(creator)) throw new Error503("Service unavailable !");
+      if (!creator || !isValidObjectId(creator)) throw new Error503("Service unavailable !");
 
       const data = bookInputDataValidation(req?.body);
 
       Object.assign(data, {
          creatorId: creator,
          bookCreatedAt: new Date(Date.now()),
-         thumbnail: "/images/" + thumbnailFile?.filename, ratings: {
-            "1": 0,
-            "2": 0,
-            "3": 0,
-            "4": 0,
-            "5": 0,
-            "6": 0,
-            "7": 0,
-            "8": 0,
-            "9": 0,
-            "10": 0
-         }
+         thumbnail: "/images/" + thumbnailFile?.filename, ratings: RATING_POINTS
       });
 
       // Added data to the book
@@ -202,13 +177,13 @@ async function modifyBook(req, res, next) {
 
       if (!bookId) throw new Error400('Required book id in the params!');
 
-      if (!ObjectId.isValid(bookId))
+      if (!isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
 
       const bookData = bookInputDataValidation(req?.body);
 
-      let filterFor = role === ROLES?.user ? { $and: [{ _id: new ObjectId(bookId) }, { creatorId: new ObjectId(_id) }] } : { _id: new ObjectId(bookId) };
+      let filterFor = role === ROLES?.user ? { $and: [{ _id: compareObjectId(bookId) }, { creatorId: compareObjectId(_id) }] } : { _id: compareObjectId(bookId) };
 
       const book = await BOOKS_TBL.findOne(filterFor);
 
@@ -246,15 +221,15 @@ async function deleteSingleBookById(req, res, next) {
 
       if (!bookId) throw new Error400('Required book id in the params!');
 
-      if (!ObjectId.isValid(bookId))
+      if (!isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
 
 
-      await BOOKS_TBL.deleteOne({ _id: new ObjectId(bookId) });
-      await BOOKS_COMMENT_TBL.deleteMany({ bookId: new ObjectId(bookId) });
-      await BOOKS_RATING_TBL.deleteMany({ bookId: new ObjectId(bookId) });
-      await BOOKS_READ_TBL.deleteMany({ bookId: new ObjectId(bookId) });
+      await BOOKS_TBL.deleteOne({ _id: compareObjectId(bookId) });
+      await BOOKS_COMMENT_TBL.deleteMany({ bookId: compareObjectId(bookId) });
+      await BOOKS_RATING_TBL.deleteMany({ bookId: compareObjectId(bookId) });
+      await BOOKS_READ_TBL.deleteMany({ bookId: compareObjectId(bookId) });
 
       return new Success(res, {
          message: `Book successfully deleted with id : ${bookId}`
@@ -288,11 +263,11 @@ async function addBookToTheReadCategory(req, res, next) {
 
       if (!bookId) throw new Error400('Required book id in the params!');
 
-      if (!ObjectId.isValid(bookId))
+      if (!isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
 
-      const filterFor = { $and: [{ bookId: new ObjectId(bookId) }, { userId: new ObjectId(_id) }] };
+      const filterFor = { $and: [{ bookId: compareObjectId(bookId) }, { userId: compareObjectId(_id) }] };
 
       const bookReads = await BOOKS_READ_TBL.findOne(filterFor);
 
@@ -333,7 +308,7 @@ async function showAllReadCategoryBooks(req, res, next) {
       const { _id } = req?.decoded;
 
       const readBooksData = await BOOKS_READ_TBL.aggregate([{
-         $match: { userId: new ObjectId(_id) }
+         $match: { userId: compareObjectId(_id) }
       },
       {
          $lookup: {
@@ -383,9 +358,9 @@ async function deleteReadCategoryBookById(req, res, next) {
       const { bookId } = req?.params;
       const { _id } = req?.decoded;
 
-      if (!bookId || !ObjectId.isValid(bookId)) throw new Error400("Invalid book id in the params!");
+      if (!bookId || !isValidObjectId(bookId)) throw new Error400("Invalid book id in the params!");
 
-      await BOOKS_READ_TBL.deleteOne({ $and: [{ userId: new ObjectId(_id) }, { bookId: new ObjectId(bookId) }] });
+      await BOOKS_READ_TBL.deleteOne({ $and: [{ userId: compareObjectId(_id) }, { bookId: compareObjectId(bookId) }] });
 
       return new Success(res, {
          message: "Book removed successfully."
@@ -414,15 +389,16 @@ async function addRatingsForBook(req, res, next) {
 
       if (!bookId) throw new Error400('Required book id in the params!');
 
-      if (!ObjectId.isValid(bookId))
+      if (!isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
       if (typeof rating !== "number") throw new Error400('Rating points must be numbers!');
 
       if (!Array.from({ length: 10 }, (_, i) => i + 1).includes(rating)) throw new Error400("Invalid ratings point range!");
 
-      const ratingExist = await BOOKS_RATING_TBL.findOne({ $and: [{ bookId: new ObjectId(bookId) }, { userId: new ObjectId(_id) }] });
-      let book = await BOOKS_TBL.findOne({ _id: new ObjectId(bookId) });
+      const ratingExist = await BOOKS_RATING_TBL.findOne({ $and: [{ bookId: compareObjectId(bookId) }, { userId: compareObjectId(_id) }] });
+
+      let book = await BOOKS_TBL.findOne({ _id: compareObjectId(bookId) });
 
       if (ratingExist) {
          book.ratings[`${ratingExist?.rating}`] = book.ratings[`${ratingExist?.rating}`] - 1;
@@ -495,7 +471,7 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
       let forUserBooks = {};
       if (decoded?._id && decoded?.role === "User") {
          forUserBooks = {
-            creatorId: new ObjectId(decoded?._id)
+            creatorId: compareObjectId(decoded?._id)
          }
       }
       // search query
@@ -615,7 +591,7 @@ async function getAllBooksBySearchOrNotSearchSystem(req, res, next) {
  * @param {*} req 
  * @param {*} res 
  * @param {*} next 
- * @returns 
+ * @returns next
  */
 async function getSingleBookDataById(req, res, next) {
    try {
@@ -623,12 +599,12 @@ async function getSingleBookDataById(req, res, next) {
 
       if (!bookId) throw new Error400('Required book id in the params!');
 
-      if (!ObjectId.isValid(bookId))
+      if (!isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
       const userId = req?.decoded?._id;
 
-      let filters = [{ $match: { _id: new ObjectId(bookId) } }, {
+      let filters = [{ $match: { _id: compareObjectId(bookId) } }, {
          $lookup: {
             from: "BOOKS_COMMENT_TBL",
             let: { mainBookId: "$_id" },
@@ -680,7 +656,7 @@ async function getSingleBookDataById(req, res, next) {
          $unset: ["ratings", "comments"]
       }];
 
-      if (userId && ObjectId.isValid(userId)) {
+      if (userId && isValidObjectId(userId)) {
          filters.push({
             $lookup: {
                from: "BOOKS_RATING_TBL",
@@ -691,7 +667,7 @@ async function getSingleBookDataById(req, res, next) {
                      $project: { ratingUserId: "$userId", ratingUserValue: "$rating", _id: 0 }
                   }, {
                      $match: {
-                        ratingUserId: new ObjectId(userId)
+                        ratingUserId: compareObjectId(userId)
                      }
                   }
                ],
@@ -728,7 +704,7 @@ async function addCommentsForBook(req, res, next) {
       const { bookId } = req?.params;
 
 
-      if (!bookId || !ObjectId.isValid(bookId))
+      if (!bookId || !isValidObjectId(bookId))
          throw new Error400("Invalid book id!");
 
 
@@ -796,9 +772,9 @@ async function deleteBooksCommentByIdInDashboard(req, res, next) {
    try {
       const { commentId } = req?.params;
 
-      if (!commentId || !ObjectId.isValid(commentId)) throw new Error400("Invalid comment id!");
+      if (!commentId || !isValidObjectId(commentId)) throw new Error400("Invalid comment id!");
 
-      await BOOKS_COMMENT_TBL.deleteOne({ _id: new ObjectId(commentId) });
+      await BOOKS_COMMENT_TBL.deleteOne({ _id: compareObjectId(commentId) });
 
       return new Success(res, {
          message: `Comment with id ${commentId} deleted successfully.`
@@ -823,15 +799,15 @@ async function reportBooksComment(req, res, next) {
 
       const { _id: reportId } = req?.decoded;
 
-      if (!commentId || !ObjectId.isValid(commentId)) throw new Error400("Invalid comment id!");
-      if (!reportId || !ObjectId.isValid(reportId)) throw new Error400("Invalid reportId id!");
+      if (!commentId || !isValidObjectId(commentId)) throw new Error400("Invalid comment id!");
+      if (!reportId || !isValidObjectId(reportId)) throw new Error400("Invalid reportId id!");
 
-      let comment = await BOOKS_COMMENT_TBL.findOne({ _id: new ObjectId(commentId) });
+      let comment = await BOOKS_COMMENT_TBL.findOne({ _id: compareObjectId(commentId) });
 
       if (!comment) throw new Error404("Sorry comment not fount!");
 
       // Checking if this comment for report user
-      if (new ObjectId(comment?.userId).toString() === reportId) throw new Error400("You can not report your own comment!");
+      if (compareObjectId(comment?.userId).toString() === reportId) throw new Error400("You can not report your own comment!");
 
       const reports = comment?.reports || [];
 
@@ -884,7 +860,7 @@ async function myBookSelfBooks(req, res, next) {
 
 
       const ratedBooks = await BOOKS_RATING_TBL.aggregate([
-         { $match: { userId: new ObjectId(_id) } },
+         { $match: { userId: compareObjectId(_id) } },
          bookTbl,
          {
             $unset: ["_id"]
@@ -898,7 +874,7 @@ async function myBookSelfBooks(req, res, next) {
       ]);
 
       const readBooks = await BOOKS_READ_TBL.aggregate([
-         { $match: { userId: new ObjectId(_id) } },
+         { $match: { userId: compareObjectId(_id) } },
          bookTbl,
          { $match: { readStatus: "read" } },
          {
@@ -914,7 +890,7 @@ async function myBookSelfBooks(req, res, next) {
 
       // to-read
       const unreadBooks = await BOOKS_READ_TBL.aggregate([
-         { $match: { userId: new ObjectId(_id) } },
+         { $match: { userId: compareObjectId(_id) } },
          bookTbl,
          { $match: { readStatus: "to-read" } },
          {
@@ -979,15 +955,15 @@ async function deleteOwnComments(req, res, next) {
       const bookId = req?.params?.bookId;
       const userId = req?.decoded?._id;
 
-      if (!commentId || !ObjectId.isValid(commentId)) throw new Error400("Invalid comment id!");
+      if (!commentId || !isValidObjectId(commentId)) throw new Error400("Invalid comment id!");
 
-      if (!bookId || !ObjectId.isValid(bookId)) throw new Error400("Invalid book id!");
+      if (!bookId || !isValidObjectId(bookId)) throw new Error400("Invalid book id!");
 
       const result = await BOOKS_COMMENT_TBL.findOneAndDelete({
          $and: [
-            { _id: new ObjectId(commentId) },
-            { bookId: new ObjectId(bookId) },
-            { userId: new ObjectId(userId) }
+            { _id: compareObjectId(commentId) },
+            { bookId: compareObjectId(bookId) },
+            { userId: compareObjectId(userId) }
          ]
       });
 
@@ -1008,10 +984,10 @@ async function showAllComments(req, res, next) {
    try {
       const bookId = req?.params?.bookId;
 
-      if (!bookId || !ObjectId.isValid(bookId)) throw new Error400("Invalid book id!");
+      if (!bookId || !isValidObjectId(bookId)) throw new Error400("Invalid book id!");
 
       const comments = await BOOKS_COMMENT_TBL.aggregate([
-         { $match: { bookId: new ObjectId(bookId) } },
+         { $match: { bookId: compareObjectId(bookId) } },
          {
             $lookup: {
                from: "USERS_TBL",

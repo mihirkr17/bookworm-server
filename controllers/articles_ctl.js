@@ -2,6 +2,7 @@ const { ObjectId } = require("mongodb");
 const ARTICLES_TBL = require("../models/ARTICLES_TBL");
 const { Success, Error400 } = require("../responser/response");
 const validator = require("validator");
+const { isValidObjectId, compareObjectId } = require("../utils/mongodb_function");
 
 /**
  * [Create Article By Editor]
@@ -53,10 +54,10 @@ async function deleteArticleById(req, res, next) {
       const { articleId } = req?.params;
       const { _id } = req?.decoded;
 
-      if (!articleId || !ObjectId.isValid(articleId)) throw new Error400(`Invalid article id in the params!`);
+      if (!articleId || !isValidObjectId(articleId)) throw new Error400(`Invalid article id in the params!`);
 
-      //   const result =  await ARTICLES_TBL.findOneAndDelete({ $and: [{ _id: new ObjectId(articleId) }, { authorId: new ObjectId(_id) }] });
-      const result = await ARTICLES_TBL.findOneAndDelete({ _id: new ObjectId(articleId) });
+      //   const result =  await ARTICLES_TBL.findOneAndDelete({ $and: [{ _id: compareObjectId(articleId) }, { authorId: compareObjectId(_id) }] });
+      const result = await ARTICLES_TBL.findOneAndDelete({ _id: compareObjectId(articleId) });
 
       if (!result) throw new Error400(`Permission denied!`);
 
@@ -200,9 +201,9 @@ async function modifyArticle(req, res, next) {
 
       if (!content || !title) throw new Error400("Required content and title!");
 
-      if (!articleId || !ObjectId.isValid(articleId)) throw new Error400(`Invalid article id in the params!`);
+      if (!articleId || !isValidObjectId(articleId)) throw new Error400(`Invalid article id in the params!`);
 
-      const article = await ARTICLES_TBL.findOne({ $and: [{ _id: new ObjectId(articleId) }, { authorId: new ObjectId(_id) }] });
+      const article = await ARTICLES_TBL.findOne({ $and: [{ _id: compareObjectId(articleId) }, { authorId: compareObjectId(_id) }] });
 
       Object.assign(article, {
          content,
@@ -236,10 +237,10 @@ async function getArticleById(req, res, next) {
    try {
       const { articleId } = req?.params;
 
-      if (!articleId || !ObjectId.isValid(articleId)) throw new Error400("Invalid article id in the params!");
+      if (!articleId || !isValidObjectId(articleId)) throw new Error400("Invalid article id in the params!");
 
       const article = await ARTICLES_TBL.aggregate([
-         { $match: { _id: new ObjectId(articleId) } },
+         { $match: { _id: compareObjectId(articleId) } },
          {
             $lookup: {
                from: "USERS_TBL",
@@ -266,7 +267,7 @@ async function getArticleById(req, res, next) {
 
       const singleArticle = Array.isArray(article) ? article[0] : {}
 
-      await ARTICLES_TBL.updateOne({ _id: new ObjectId(articleId) }, { $inc: { views: 1 } }, { upsert: true })
+      await ARTICLES_TBL.updateOne({ _id: compareObjectId(articleId) }, { $inc: { views: 1 } }, { upsert: true })
 
       return new Success(res, {
          data: {

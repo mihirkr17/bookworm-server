@@ -6,19 +6,37 @@ const ROLES = {
    editor: "Editor"
 }
 
-
 const BOOK_CATEGORIES = [
    "Fiction",
-   "Juvenile Fiction",
-   "Biography & Autobiography",
-   "History",
-   "Drama",
-   "Religion",
-   "Sports & Recreation",
+   "Mystery",
+   "Thriller",
+   "Romance",
+   "Science Fiction",
+   "Fantasy",
+   "Horror",
+   "Historical Fiction",
+   "Adventure",
+   "Biography",
+   "Autobiography",
+   "Self-Help",
+   "Business",
    "Travel",
-   "Science",
+   "Poetry",
+   "Memoir",
+   "Young Adult",
+   "Children's",
+   "Graphic Novel",
+   "Cookbooks",
+   "Art",
    "Philosophy",
-   "Psychology"
+   "Religion",
+   "Science",
+   "Psychology",
+   "Sociology",
+   "Education",
+   "Politics",
+   "Economics",
+   "Health and Fitness"
 ]
 
 
@@ -34,4 +52,18 @@ const MAIL_CONFIG = {
 }
 
 
-module.exports = { AUTH_SECRET, MONGO_URI, ROLES, BOOK_CATEGORIES, BOOKS_READ_STATUS, MAIL_CONFIG }
+const RATING_POINTS = {
+   "1": 0,
+   "2": 0,
+   "3": 0,
+   "4": 0,
+   "5": 0,
+   "6": 0,
+   "7": 0,
+   "8": 0,
+   "9": 0,
+   "10": 0
+}
+
+
+module.exports = { AUTH_SECRET, MONGO_URI, ROLES, BOOK_CATEGORIES, BOOKS_READ_STATUS, MAIL_CONFIG, RATING_POINTS }

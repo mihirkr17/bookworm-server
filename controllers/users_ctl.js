@@ -6,6 +6,8 @@ const validator = require("validator");
 const { ERROR_MESSAGE } = require("../configs/error_message");
 const { smtpSender } = require("../services/email_srv");
 const { validStringRegex } = require("../utils/input_validator");
+const { isValidObjectId, compareObjectId } = require("../utils/mongodb_function");
+
 
 /**
  * [All USERS_TBL in Editor Dashboard]
@@ -50,9 +52,9 @@ async function deleteUserById(req, res, next) {
    try {
       const { userId } = req?.params;
 
-      if (!userId || !ObjectId.isValid(userId)) throw new Error400('Invalid user id in the params!');
+      if (!userId || !isValidObjectId(userId)) throw new Error400('Invalid user id in the params!');
 
-      await USERS_TBL.deleteOne({ $and: [{ _id: new ObjectId(userId) }, { role: ROLES.user }] });
+      await USERS_TBL.deleteOne({ $and: [{ _id: compareObjectId(userId) }, { role: ROLES.user }] });
 
       return new Success(res, {
          message: `User with id ${userId} deleted successfully.`
@@ -122,7 +124,7 @@ async function myProfile(req, res, next) {
    try {
       const { _id } = req?.decoded;
 
-      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+      let user = await USERS_TBL.findOne({ _id: compareObjectId(_id) }, { password: 0 });
 
       if (!user) throw new Error("Invalid Credentials!");
 
@@ -147,7 +149,7 @@ async function changeUserNames(req, res, next) {
       if (!lastName || lastName.trim().length < 3 || lastName.trim().length > 10 || !validStringRegex(lastName))
          throw new Error400(ERROR_MESSAGE.lastNameErr);
 
-      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+      let user = await USERS_TBL.findOne({ _id: compareObjectId(_id) }, { password: 0 });
 
       if (!user) throw new Error("Invalid Credentials!");
 
@@ -170,7 +172,7 @@ async function updateAvatar(req, res, next) {
       const { _id } = req?.decoded;
       const avatarFile = req?.file;
 
-      let user = await USERS_TBL.findOne({ _id: new ObjectId(_id) }, { password: 0 });
+      let user = await USERS_TBL.findOne({ _id: compareObjectId(_id) }, { password: 0 });
 
       if (!user) throw new Error("Invalid Credentials!");
 
