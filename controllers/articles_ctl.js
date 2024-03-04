@@ -256,7 +256,7 @@ async function getArticleById(req, res, next) {
 
       const singleArticle = Array.isArray(article) ? article[0] : {}
 
-      await ARTICLES_TBL.updateOne({ _id: new ObjectId(articleId) }, { $set: { views: singleArticle?.views + 1 || 0 } }, { upsert: true })
+      await ARTICLES_TBL.updateOne({ _id: new ObjectId(articleId) }, { $inc: { views: 1 } }, { upsert: true })
 
       return new Success(res, {
          data: {
