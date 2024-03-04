@@ -92,11 +92,9 @@ async function showAllArticles(req, res, next) {
       searchQuery = {
          $or: [{ title: { $regex: newQ, $options: 'si' } }, {
             keywords: { $in: newQ.split(" ") }
-         }]
+         }, { authorName: { $regex: newQ, $options: 'si' } }]
       }
    };
-
-
 
    let sortQuery = {};
 
@@ -116,12 +114,22 @@ async function showAllArticles(req, res, next) {
       sortQuery = { views: -1 };
    }
 
+   if (action === "false") {
+      sortQuery = {
+         _id: -1
+      }
+   }
+
    const skip = Math.ceil((parseInt(page) - 1) * parseInt(limits));
 
    try {
 
       let searchStructure = [
-         { $match: searchQuery },
+         {
+            $project: {
+               content: 0
+            }
+         },
          {
             $lookup: {
                from: "USERS_TBL",
@@ -143,7 +151,9 @@ async function showAllArticles(req, res, next) {
          },
          {
             $unset: ["authorAcc"]
-         }, {
+         },
+         { $match: searchQuery },
+         {
             $sort: sortQuery
          },
       ]
