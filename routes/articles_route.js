@@ -56,7 +56,6 @@ router.delete("/delete/:articleId", verifyAuth, isEditor, deleteArticleById);
 router.get("/", showAllArticles);
 
 
-
 /**
  * [Single article description route]
  *
