@@ -3,7 +3,7 @@ const router = express.Router();
 
 const { loginSystem, userSignUpSystem, editorSignUpSystem, resetPassword, changePasswordSystem } = require("../controllers/auth_ctl");
 const { verifyAuth } = require("../middlewares/auth_mdl");
-const { editorAvatarUploader } = require("../middlewares/multer_mdl");
+const { avatarUploader } = require("../middlewares/file_uploader");
 
 
 /**
@@ -38,7 +38,7 @@ router.post("/user/signup", userSignUpSystem);
  * @body {firstName, lastName, email, password}
  * @return  {[type]}                      [return response message]
  */
-router.post("/editor/signup", editorAvatarUploader().single("avatar"), editorSignUpSystem);
+router.post("/editor/signup", avatarUploader, editorSignUpSystem);
 
 
 /**

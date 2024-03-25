@@ -130,7 +130,9 @@ async function editorSignUpSystem(req, res, next) {
 
       let body = req?.body;
 
-      body["avatarFileName"] = avatarFile?.filename;
+      if (!avatarFile?.path) throw new Error400("An unexpected error occurred when file uploading!");
+
+      body["avatarFileName"] = avatarFile?.path;
 
       await registerCallback(body, ROLES.editor);
 

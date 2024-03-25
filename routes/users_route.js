@@ -1,7 +1,7 @@
 const express = require("express");
 const { verifyAuth, isEditor } = require("../middlewares/auth_mdl");
 const { showAllUsersInEditorDashboard, updateAvatar, deleteUserById, persistUser, checkUserExistOrNotByEmail, myProfile, changeUserNames } = require("../controllers/users_ctl");
-const { editorAvatarUploader } = require("../middlewares/multer_mdl");
+const { avatarUploader } = require("../middlewares/file_uploader");
 const router = express.Router();
 
 
@@ -60,6 +60,6 @@ router.get("/my-profile", verifyAuth, myProfile);
 
 router.put("/change-names", verifyAuth, changeUserNames);
 
-router.put("/update-avatar", verifyAuth, editorAvatarUploader().single("avatar"), updateAvatar)
+router.put("/update-avatar", verifyAuth, avatarUploader, updateAvatar)
 
 module.exports = router;

@@ -19,10 +19,11 @@ const {
    myBookSelfBooks,
    getAllBooksCategories,
    deleteOwnComments,
-   deleteReadCategoryBookById, 
-   showAllComments} = require("../controllers/books_ctl");
+   deleteReadCategoryBookById,
+   showAllComments } = require("../controllers/books_ctl");
 const { verifyAuth, isEditor, getAuth } = require("../middlewares/auth_mdl");
-const { uploadBookAsCsv, thumbnailUploader } = require("../middlewares/multer_mdl");
+const { uploadBookAsCsv } = require("../middlewares/multer_mdl");
+const { bookThumbUploader } = require("../middlewares/file_uploader");
 
 
 /**
@@ -50,7 +51,7 @@ router.post("/add-book-by-csv", verifyAuth, uploadBookAsCsv().single("book"), ad
  * @body { title, isbn, authors, categories, publishedYear, numberPages, description }
  * @return  {[type]}                     [return response message]
  */
-router.post("/create-book", verifyAuth, thumbnailUploader().single("thumbnail"), createBook);
+router.post("/create-book", verifyAuth, bookThumbUploader, createBook);
 
 
 
@@ -64,7 +65,7 @@ router.post("/create-book", verifyAuth, thumbnailUploader().single("thumbnail"),
  *
  * @return  {[type]}                     [return response message]
  */
-router.put("/modify/:bookId", verifyAuth, thumbnailUploader().single("thumbnail"), modifyBook);
+router.put("/modify/:bookId", verifyAuth, bookThumbUploader, modifyBook);
 
 
 

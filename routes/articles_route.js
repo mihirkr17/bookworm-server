@@ -4,7 +4,7 @@ const { verifyAuth, isEditor } = require("../middlewares/auth_mdl");
 
 // Articles Controllers
 const { createArticle, deleteArticleById, showAllArticles, getArticleById, modifyArticle, homeArticle } = require("../controllers/articles_ctl");
-const { thumbnailUploader } = require("../middlewares/multer_mdl");
+const { articleThumbUploader } = require("../middlewares/file_uploader");
 
 /**
  * [Create Article]
@@ -17,7 +17,7 @@ const { thumbnailUploader } = require("../middlewares/multer_mdl");
  * @body {title, content, thumbnail}
  * @return  {[type]}                     [return description]
  */
-router.post("/create", verifyAuth, isEditor, thumbnailUploader().single("thumbnail"), createArticle);
+router.post("/create", verifyAuth, isEditor, articleThumbUploader, createArticle);
 
 /**
  * [Modify Article Route]
@@ -30,7 +30,7 @@ router.post("/create", verifyAuth, isEditor, thumbnailUploader().single("thumbna
  * @body {title, content, thumbnail}
  * @return  {[type]}                      [return response message]
  */
-router.put("/modify/:articleId", verifyAuth, isEditor, thumbnailUploader().single("thumbnail"), modifyArticle);
+router.put("/modify/:articleId", verifyAuth, isEditor, articleThumbUploader, modifyArticle);
 
 
 /**

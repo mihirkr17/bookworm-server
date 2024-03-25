@@ -139,6 +139,8 @@ async function createBook(req, res, next) {
       const thumbnailFile = req?.file;
       const creator = req?.decoded?._id;
 
+      if (!thumbnailFile?.path) throw new Error400("An unexpected error occurred when file uploading!");
+
       if (!creator || !isValidObjectId(creator)) throw new Error503("Service unavailable !");
 
       const data = bookInputDataValidation(req?.body);
@@ -146,7 +148,8 @@ async function createBook(req, res, next) {
       Object.assign(data, {
          creatorId: creator,
          bookCreatedAt: new Date(Date.now()),
-         thumbnail: "/images/" + thumbnailFile?.filename, ratings: RATING_POINTS
+         thumbnail: thumbnailFile?.path,
+         ratings: RATING_POINTS
       });
 
       // Added data to the book
@@ -192,7 +195,7 @@ async function modifyBook(req, res, next) {
       // assign new values
       Object.assign(book, {
          ...bookData,
-         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : book?.thumbnail,
+         thumbnail: thumbnailFile?.path ? thumbnailFile?.path : book?.thumbnail,
          bookModifiedAt: new Date(Date.now())
       });
 
@@ -747,12 +750,50 @@ async function showAllBooksCommentsInDashboard(req, res, next) {
       // Pagination 
       const skip = Math.ceil((parseInt(page) - 1) * parseInt(limit));
 
-      const comments = await BOOKS_COMMENT_TBL.find({}).sort({ reportsCount: -1 }).skip(skip).limit(parseInt(limit));
-      const totalCommentsCount = await BOOKS_COMMENT_TBL.countDocuments({});
+      const commentWrapper = await BOOKS_COMMENT_TBL.aggregate([
+         {
+            $facet: {
+               totalCommentsCount: [{ $count: 'number' }],
+               comments: [
+                  {
+                     $lookup: {
+                        from: "USERS_TBL",
+                        let: { uId: "$userId" },
+                        pipeline: [
+                           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+                           {
+                              $project: {
+                                 commentAuthorName: { $concat: ["$firstName", " ", "$lastName"] }
+                              }
+                           }
+                        ],
+                        as: "commentUser"
+                     }
+                  },
+                  {
+                     $replaceRoot: { newRoot: { $mergeObjects: [{ $arrayElemAt: ["$commentUser", 0] }, "$$ROOT"] } }
+                  },
+                  {
+                     $unset: ["commentUser", "reports"]
+                  },
+                  {
+                     $sort: { reportsCount: -1 }
+                  },
+                  {
+                     $skip: skip
+                  },
+                  {
+                     $limit: parseInt(limit)
+                  }
+               ]
+            }
+         }
+      ]);
+
       return new Success(res, {
          data: {
-            comments: comments || [],
-            totalCommentsCount: totalCommentsCount || 0
+            comments: Array.isArray(commentWrapper) && commentWrapper[0]?.comments || [],
+            totalCommentsCount: Array.isArray(commentWrapper[0]?.totalCommentsCount) && commentWrapper[0]?.totalCommentsCount[0]?.number || 0
          }
       })
 
@@ -797,25 +838,23 @@ async function reportBooksComment(req, res, next) {
    try {
       const { commentId } = req?.params;
 
-      const { _id: reportId } = req?.decoded;
+      const _id = req?.decoded._id;
 
       if (!commentId || !isValidObjectId(commentId)) throw new Error400("Invalid comment id!");
-      if (!reportId || !isValidObjectId(reportId)) throw new Error400("Invalid reportId id!");
 
       let comment = await BOOKS_COMMENT_TBL.findOne({ _id: compareObjectId(commentId) });
 
       if (!comment) throw new Error404("Sorry comment not fount!");
 
       // Checking if this comment for report user
-      if (compareObjectId(comment?.userId).toString() === reportId) throw new Error400("You can not report your own comment!");
+      if (_id === comment?.userId.toString()) throw new Error400("You can not report your own comment!");
 
       const reports = comment?.reports || [];
-
-      if (reports.includes(reportId)) throw new Error400("You already report this comment!");
-
-      reports.push(reportId);
-
       let reportsCount = reports.length;
+
+      if (reports.includes(_id)) throw new Error400("You already report this comment!");
+
+      reports.push(_id);
 
       // Inserting reports
       comment.reports = reports;
@@ -825,7 +864,7 @@ async function reportBooksComment(req, res, next) {
       await comment.save();
 
       return new Success(res, {
-         message: "Report done."
+         message: "Report successfully done."
       });
    } catch (error) {
       next(error);

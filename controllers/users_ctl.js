@@ -176,7 +176,7 @@ async function updateAvatar(req, res, next) {
 
       if (!user) throw new Error("Invalid Credentials!");
 
-      let newAvatar = avatarFile ? "/avatar/" + avatarFile.filename : user?.avatar;
+      let newAvatar = avatarFile?.path ? avatarFile?.path : user?.avatar;
 
       user.avatar = newAvatar;
 

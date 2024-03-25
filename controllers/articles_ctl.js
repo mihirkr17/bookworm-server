@@ -16,6 +16,7 @@ async function createArticle(req, res, next) {
       const { _id } = req?.decoded;
 
       const { title, content, metaDescription, keywords } = req?.body;
+      
       const thumbnailFile = req?.file;
 
       if (!content || !title) throw new Error400("Required content and title!");
@@ -26,7 +27,7 @@ async function createArticle(req, res, next) {
          metaDescription,
          keywords: keywords.split(" "),
          authorId: _id,
-         thumbnail: thumbnailFile ? "/images/" + thumbnailFile?.filename : null,
+         thumbnail: thumbnailFile ? thumbnailFile?.path : null,
          articleCreatedAt: new Date(Date.now())
       }).save();
 
@@ -210,7 +211,7 @@ async function modifyArticle(req, res, next) {
          title,
          keywords: keywords.split(" "),
          metaDescription,
-         thumbnail: thumbnailFile?.filename ? "/images/" + thumbnailFile?.filename : article?.thumbnail,
+         thumbnail: thumbnailFile?.path ? thumbnailFile?.path : article?.thumbnail,
          articleModifiedAt: new Date(Date.now())
       });
 
