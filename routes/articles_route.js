@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyAuth, isEditor } = require("../middlewares/auth_mdl");
 
 // Articles Controllers
-const { createArticle, deleteArticleById, showAllArticles, getArticleById, modifyArticle, homeArticle } = require("../controllers/articles_ctl");
+const { createArticle, deleteArticleById, showAllArticles, getArticleById, modifyArticle, homeArticle, updateArticleStatus } = require("../controllers/articles_ctl");
 const { articleThumbUploader } = require("../middlewares/file_uploader");
 
 /**
@@ -55,6 +55,8 @@ router.delete("/delete/:articleId", verifyAuth, isEditor, deleteArticleById);
  */
 router.get("/", showAllArticles);
 
+router.get("/manage-articles", verifyAuth, isEditor, showAllArticles);
+
 
 /**
  * [Single article description route]
@@ -67,6 +69,9 @@ router.get("/", showAllArticles);
 router.get("/single/:articleId", getArticleById);
 
 
-router.get("/home", homeArticle)
+router.get("/home", homeArticle);
+
+
+router.put("/status/:articleId", verifyAuth, isEditor, updateArticleStatus);
 
 module.exports = router;

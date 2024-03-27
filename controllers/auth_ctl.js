@@ -13,7 +13,7 @@ async function registerCallback(data, role) {
    try {
       const { email, password, avatarFileName } = data;
 
-      let avatar = avatarFileName && "/avatar/" + avatarFileName;
+      let avatar = avatarFileName ? avatarFileName : "";
 
       const firstName = data?.firstName && data?.firstName.trim();
       const lastName = data?.lastName && data?.lastName.trim();
